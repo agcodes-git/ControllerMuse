@@ -14,14 +14,27 @@ j = joysticks[0]
 pjs = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
 for p in pjs: p.init()
 
-player_1 = pygame.midi.Output(0)
+#player_1 = pygame.midi.Output(0)
 #player.set_instrument(12) # bells
 #player.set_instrument(15) # bells
 #player.set_instrument(40) # violin
-# 78 is a whistle.
-player_1.set_instrument(15)
+# 78 is a whistle. 25 is a clavichord/banjoy
+#player_1.set_instrument(130)
+
+import time
+import rtmidi
+
+midiout = rtmidi.MidiOut()
+available_ports = midiout.get_ports()
+
+if available_ports:
+    midiout.open_port(1)
+else:
+    midiout.open_virtual_port("My virtual output")
+    print("This ran, honestly don't know if it works though.")
 
 axis_values = {}
+
 @j.event
 def on_axis(axis, value):
 
@@ -83,7 +96,8 @@ def to_note(letter, octave, delay=0.05):
         'B':11,
     }
     return 60 + 12 * octave + letter_code[letter]
-def major(base_letter, octave, delay=0.05):
+
+'''def major(base_letter, octave, delay=0.05):
     letter_code = to_note(base_letter, octave)
     player_1.note_on(letter_code, 127)
     time.sleep(delay)
@@ -111,21 +125,27 @@ def felt(base_letter, octave, delay=0.05):
 
 def play(base_letter, octave, delay=0):
     player_1.note_on(to_note(base_letter, octave), 127)
-
+'''
 def long_major(base_letter, octave, delay=0.05):
     letter_code = to_note(base_letter, octave)
-    player_1.note_on(letter_code, 127)
+    midiout.send_message([0x90, letter_code, 112])
+    #player_1.note_on(letter_code, 127)
     time.sleep(delay)
-    player_1.note_on(letter_code + 7, 127)
+    midiout.send_message([0x90, letter_code+7, 112])
+    #player_1.note_on(letter_code + 7, 127)
     time.sleep(delay)
-    player_1.note_on(letter_code + 16, 127)
+    midiout.send_message([0x90, letter_code+16, 112])
+    #player_1.note_on(letter_code + 16, 127)
 def long_minor(base_letter, octave, delay=0.05):
     letter_code = to_note(base_letter, octave)
-    player_1.note_on(letter_code, 127)
+    midiout.send_message([0x90, letter_code, 112])
+    #player_1.note_on(letter_code, 127)
     time.sleep(delay)
-    player_1.note_on(letter_code + 7, 127)
+    midiout.send_message([0x90, letter_code+7, 112])
+    #player_1.note_on(letter_code + 7, 127)
     time.sleep(delay)
-    player_1.note_on(letter_code + 15, 127)
+    midiout.send_message([0x90, letter_code+15, 112])
+    #player_1.note_on(letter_code + 15, 127)
 
 def point_to_quadrant(point):
 
@@ -140,9 +160,6 @@ def point_to_quadrant(point):
         if -45 > angle > -135: return "LEFT"
 
 octave = 0
-maj_chord_function = lambda : long_major if get_left_trigger() < 0.1 else major
-min_chord_function = lambda : long_minor if get_left_trigger() < 0.1 else minor
-
 old_LQ = "CENTER"
 old_RQ = "CENTER"
 
@@ -172,22 +189,30 @@ while True:
     left_delay = 0
 
     if current_LQ == "DOWN":
-        if old_LQ != "DOWN": player_1.note_on(to_note('A', 0), 127)
+        if old_LQ != "DOWN":
+            midiout.send_message([0x90, to_note('A', 0), 112])
+            #player_1.note_on(to_note('A', 0), 127)
         left_note = ('A', 0)
     #else: player_1.note_off(to_note('A', 0))
 
     if current_LQ == "LEFT":
-        if old_LQ != "LEFT": player_1.note_on(to_note('B', 0), 127)
+        if old_LQ != "LEFT":
+            midiout.send_message([0x90, to_note('B', 0), 112])
+            #player_1.note_on(to_note('B', 0), 127)
         left_note = ('B', 0)
     #else: player_1.note_off(to_note('B', 0))
 
     if current_LQ == "UP":
-        if old_LQ != "UP": player_1.note_on(to_note('C', 1), 127)
+        if old_LQ != "UP":
+            midiout.send_message([0x90, to_note('C', 1), 112])
+                #"UP": player_1.note_on(to_note('C', 1), 127)
         left_note = ('C#', 0)
    # else: player_1.note_off(to_note('C', 1))
 
     if current_LQ == "RIGHT":
-        if old_LQ != "RIGHT": player_1.note_on(to_note('E', 1), 127)
+        if old_LQ != "RIGHT":
+            midiout.send_message([0x90, to_note('E', 1), 112])
+            #player_1.note_on(to_note('E', 1), 127)
         left_note = ('Ab', 0)
     #else: player_1.note_off(to_note('E', 0))
 

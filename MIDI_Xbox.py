@@ -5,7 +5,7 @@ import time
 import math
 pygame.init()
 pygame.midi.init()
-s = pygame.display.set_mode((500,500))
+s = pygame.display.set_mode((350,250))
 p_clock = pygame.time.Clock()
 import numpy as np
 
@@ -19,11 +19,13 @@ player_1 = pygame.midi.Output(0)
 #player.set_instrument(15) # bells
 #player.set_instrument(40) # violin
 # 78 is a whistle.
-player_1.set_instrument(0)
+player_1.set_instrument(15)
 
 axis_values = {}
 @j.event
 def on_axis(axis, value):
+
+
     axis_values[axis] = value
     if axis == "left_trigger":
         input_manager.left[0] = value

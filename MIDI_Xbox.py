@@ -18,7 +18,8 @@ player_1 = pygame.midi.Output(0)
 #player.set_instrument(12) # bells
 #player.set_instrument(15) # bells
 #player.set_instrument(40) # violin
-player_1.set_instrument(78)
+# 78 is a whistle.
+player_1.set_instrument(0)
 
 axis_values = {}
 @j.event
@@ -167,23 +168,26 @@ while True:
     pygame.draw.rect(s, color, (bs * 2 + offset[0], bs * 2 + offset[1], bs, bs), 0 if current_LQ == "RIGHT" else 1)
 
     left_delay = 0
-    shift = 1 if get_left_trigger() else 0
 
     if current_LQ == "DOWN":
-        if old_LQ != "DOWN": player_1.note_on(to_note('A', 0)+shift, 127)
-    else: player_1.note_off(to_note('A', 0)+shift)
+        if old_LQ != "DOWN": player_1.note_on(to_note('A', 0), 127)
+        left_note = ('A', 0)
+    #else: player_1.note_off(to_note('A', 0))
 
     if current_LQ == "LEFT":
-        if old_LQ != "LEFT": player_1.note_on(to_note('B', 0)+shift, 127)
-    else: player_1.note_off(to_note('B', 0)+shift)
+        if old_LQ != "LEFT": player_1.note_on(to_note('B', 0), 127)
+        left_note = ('B', 0)
+    #else: player_1.note_off(to_note('B', 0))
 
     if current_LQ == "UP":
-        if old_LQ != "UP": player_1.note_on(to_note('C#', 1)+shift, 127)
-    else: player_1.note_off(to_note('C#', 1)+shift)
+        if old_LQ != "UP": player_1.note_on(to_note('C', 1), 127)
+        left_note = ('C#', 0)
+   # else: player_1.note_off(to_note('C', 1))
 
     if current_LQ == "RIGHT":
-        if old_LQ != "RIGHT": player_1.note_on(to_note('Ab', 0)+shift, 127)
-    else: player_1.note_off(to_note('Ab', 0)+shift)
+        if old_LQ != "RIGHT": player_1.note_on(to_note('E', 1), 127)
+        left_note = ('Ab', 0)
+    #else: player_1.note_off(to_note('E', 0))
 
     old_LQ = current_LQ
 
@@ -198,24 +202,45 @@ while True:
     pygame.draw.rect(s, color, (bs * 2 + offset[0], bs * 2 + offset[1], bs, bs), 0 if current_RQ == "RIGHT" else 1)
 
     # Depending on the quadrant I would like different responses.
+    # The symmetry between the two sticks should provide the harmony here.
+    # i.e. if you're playing the two in the same way, expect them to follow each other.
+    # Opposing symmetry should harmonize and in-betweens should be just that.
     right_delay = 0
-    shift = 1 if get_right_trigger() else 0
+
+    if current_LQ == "CENTER": continue
 
     if current_RQ == "DOWN":
-        if old_RQ != "DOWN": player_1.note_on(to_note('C#', -1)+shift, 127)
-    else: player_1.note_off(to_note('C#', -1)+shift)
-
-    if current_RQ == "RIGHT":
-        if old_RQ != "RIGHT": player_1.note_on(to_note('D', -1)+shift, 127)
-    else: player_1.note_off(to_note('D', -1)+shift)
-
-    if current_RQ == "UP":
-        if old_RQ != "UP": player_1.note_on(to_note('E', -1)+shift, 127)
-    else: player_1.note_off(to_note('E', -1)+shift)
+        if old_RQ != "DOWN":
+            if current_LQ == 'DOWN':
+                long_minor("A", -2, delay = 0)
+            #if current_LQ == 'LEFT':
+            #    long_major("G", -2, delay = 0) # I don't have a match on B exactly.
+            #if current_LQ == 'UP':
+            #    long_major("C", -2, delay = 0)
+            #if current_LQ == 'RIGHT':
+            #    long_minor("E", -2, delay=0)
 
     if current_RQ == "LEFT":
-        if old_RQ != "LEFT": player_1.note_on(to_note('A', -1)+shift, 127)
-    else: player_1.note_off(to_note('A', -1)+shift)
+        if old_RQ != "LEFT":
+            if current_LQ == 'LEFT':
+                long_major("G", -2, delay = 0) # I don't have a match on B exactly.
+            if current_LQ == 'DOWN':
+                long_major("G", -2, delay = 0)
+
+    if current_RQ == "UP":
+        if old_RQ != "UP":
+            if current_LQ == 'UP':
+                long_major("C", -2, delay = 0) # I don't have a match on B exactly.
+            if current_LQ == 'DOWN':
+                long_major("E", -1, delay = 0)
+
+    if current_RQ == "RIGHT":
+        if old_RQ != "RIGHT":
+            if current_LQ == 'RIGHT':
+                long_major("E", -2, delay = 0) # I don't have a match on B exactly.
+            if current_LQ == 'DOWN':
+                long_major("F", -2, delay = 0)
+
 
     old_RQ = current_RQ
 

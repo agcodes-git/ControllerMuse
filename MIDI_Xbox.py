@@ -154,10 +154,10 @@ while True:
     input_manager.keys_down['right_trigger'] = get_left_trigger() > 0.5
     input_manager.keys_down['left_trigger'] = get_right_trigger() > 0.5
 
-    left_stick = left_analog_stick()
+    r_sttck = left_analog_stick()
     right_stick = right_analog_stick()
 
-    current_LQ = point_to_quadrant(left_stick)
+    current_LQ = point_to_quadrant(r_sttck)
     bs = 30
     offset = (50, 20)
     color = (150, 0, 255)
@@ -213,12 +213,12 @@ while True:
         if old_RQ != "DOWN":
             if current_LQ == 'DOWN':
                 long_minor("A", -2, delay = 0)
-            #if current_LQ == 'LEFT':
-            #    long_major("G", -2, delay = 0) # I don't have a match on B exactly.
-            #if current_LQ == 'UP':
-            #    long_major("C", -2, delay = 0)
-            #if current_LQ == 'RIGHT':
-            #    long_minor("E", -2, delay=0)
+            if current_LQ == 'LEFT':
+                long_major("C", -2, delay=0)  # I don't have a match on B exactly.
+            if current_LQ == 'UP':
+                long_major("F", -2, delay = 0) # I don't have a match on B exactly.
+            if current_LQ == 'RIGHT':
+                long_major("G", -2, delay = 0) # I don't have a match on B exactly.
 
     if current_RQ == "LEFT":
         if old_RQ != "LEFT":
@@ -226,6 +226,10 @@ while True:
                 long_major("G", -2, delay = 0) # I don't have a match on B exactly.
             if current_LQ == 'DOWN':
                 long_major("G", -2, delay = 0)
+            if current_LQ == 'UP':
+                long_major("G", -2, delay = 0) # I don't have a match on B exactly.
+            if current_LQ == 'RIGHT':
+                long_major("A", -2, delay = 0) # I don't have a match on B exactly.
 
     if current_RQ == "UP":
         if old_RQ != "UP":
@@ -233,6 +237,10 @@ while True:
                 long_major("C", -2, delay = 0) # I don't have a match on B exactly.
             if current_LQ == 'DOWN':
                 long_major("E", -1, delay = 0)
+            if current_LQ == 'LEFT':
+                long_minor("E", -2, delay = 0) # I don't have a match on B exactly.
+            if current_LQ == 'RIGHT':
+                long_major("B", -2, delay = 0) # I don't have a match on B exactly.
 
     if current_RQ == "RIGHT":
         if old_RQ != "RIGHT":
@@ -240,7 +248,10 @@ while True:
                 long_major("E", -2, delay = 0) # I don't have a match on B exactly.
             if current_LQ == 'DOWN':
                 long_major("F", -2, delay = 0)
-
+            if current_LQ == 'LEFT':
+                long_major("D", -2, delay = 0) # I don't have a match on B exactly.
+            if current_LQ == 'UP':
+                long_major("D", -2, delay = 0) # I don't have a match on B exactly.
 
     old_RQ = current_RQ
 

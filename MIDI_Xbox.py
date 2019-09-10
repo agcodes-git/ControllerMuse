@@ -5,7 +5,7 @@ import time
 import math
 pygame.init()
 pygame.midi.init()
-s = pygame.display.set_mode((350,250))
+s = pygame.display.set_mode((800,500))
 p_clock = pygame.time.Clock()
 import numpy as np
 
@@ -166,7 +166,7 @@ old_RQ = "CENTER"
 while True:
 
     pygame.display.flip()
-    pygame.draw.rect(s, (0,0,0), (0,0,500,500))
+    pygame.draw.rect(s, (0,0,0), (0,0,1000,1000))
 
     # --- Respond to button presses.
     input_manager.update_inputs(pygame.event.get(), debug=False)
@@ -177,7 +177,7 @@ while True:
     right_stick = right_analog_stick()
 
     current_LQ = point_to_quadrant(r_sttck)
-    bs = 30
+    bs = 100
     offset = (50, 20)
     color = (150, 0, 255)
     pygame.draw.rect(s, color, (bs + offset[0], bs + offset[1], bs, bs), 0 if current_LQ == "UP" else 1)
@@ -187,6 +187,8 @@ while True:
     pygame.draw.rect(s, color, (bs * 2 + offset[0], bs * 2 + offset[1], bs, bs), 0 if current_LQ == "RIGHT" else 1)
 
     left_delay = 0
+
+    left_octave = 0
 
     if current_LQ == "DOWN":
         if old_LQ != "DOWN":
@@ -219,8 +221,7 @@ while True:
     old_LQ = current_LQ
 
     current_RQ = point_to_quadrant(right_stick)
-    bs = 30
-    offset = (200, 20)
+    offset = (450, 20)
     color = (150, 255, 0)
     pygame.draw.rect(s, color, (bs + offset[0], bs + offset[1], bs, bs), 0 if current_RQ == "UP" else 1)
     pygame.draw.rect(s, color, (bs + offset[0], bs * 2 + offset[1], bs, bs), 0 if current_RQ == "CENTER" else 1)

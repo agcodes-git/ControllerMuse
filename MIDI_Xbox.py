@@ -94,6 +94,7 @@ def to_note(letter, octave, delay=0.05):
         'A#':10,
         'Bb':10,
         'B':11,
+        'B#':12
     }
     return 60 + 12 * octave + letter_code[letter]
 
@@ -147,6 +148,26 @@ def long_minor(base_letter, octave, delay=0.05):
     midiout.send_message([0x90, letter_code+15, 112])
     #player_1.note_on(letter_code + 15, 127)
 
+def point_to_octant(point):
+    angle = math.atan2(point[0], point[1]) * 2.0 / (2.0*math.pi)
+    magnitude = math.sqrt(point[0]**2 + point[1]**2)
+
+    CE = 0.0 # Cardinal expansion. I thought this would be nice because it's harder to hit diagonals from center,
+            # but it also means spinning the stick won't produce even spacing, which I definitely would like to keep.
+
+    if magnitude < 0.8: return "CENTER"
+    else:
+        if (1.0 > angle > 0.875 + CE) or (-0.875 - CE > angle > -1.0): return "TOP"
+        if (0.125 - CE > angle > 0) or (0 > angle > -0.125 + CE): return "BOTTOM"
+
+        if 0.875 + CE > angle > 0.625 - CE: return "TOP_RIGHT"
+        if 0.625 - CE > angle > 0.375 + CE: return "RIGHT"
+        if 0.375 + CE > angle > 0.125 - CE: return "BOTTOM_RIGHT"
+
+        if -0.125 + CE > angle > -0.375 - CE: return "BOTTOM_LEFT"
+        if -0.375 - CE > angle > -0.625 + CE: return "LEFT"
+        if -0.625 + CE > angle > -0.875 - CE: return "TOP_LEFT"
+
 def point_to_quadrant(point):
 
     angle = math.atan2(point[0], point[1]) * (360.0 / (2.0 * math.pi))
@@ -154,15 +175,33 @@ def point_to_quadrant(point):
 
     if magnitude < 0.3: return "CENTER"
     else:
-        if (180 > angle > 135) or (-135 > angle > -180): return "UP"
-        if (45 > angle > 0) or (0 > angle > -45): return "DOWN"
+        if (180 > angle > 135) or (-135 > angle > -180): return "TOP"
+        if (45 > angle > 0) or (0 > angle > -45): return "BOTTOM"
         if 135 > angle > 45: return "RIGHT"
         if -45 > angle > -135: return "LEFT"
 
 octave = 0
-old_LQ = "CENTER"
-old_RQ = "CENTER"
+old_LP = "CENTER"
+old_RP = "CENTER"
+old_left_trigger = False
+old_right_trigger = False
 
+def draw_pad(screen, color, bs, offset, stick_position, regions):
+    pygame.draw.rect(screen, color, (bs + offset[0], bs + offset[1], bs, bs), 0 if stick_position == "TOP" else 1)
+    pygame.draw.rect(screen, color, (bs + offset[0], bs * 2 + offset[1], bs, bs), 0 if stick_position == "CENTER" else 1)
+    pygame.draw.rect(screen, color, (bs + offset[0], bs * 3 + offset[1], bs, bs), 0 if stick_position == "BOTTOM" else 1)
+    pygame.draw.rect(screen, color, (0 + offset[0], bs * 2 + offset[1], bs, bs), 0 if stick_position == "LEFT" else 1)
+    pygame.draw.rect(screen, color, (bs * 2 + offset[0], bs * 2 + offset[1], bs, bs), 0 if stick_position == "RIGHT" else 1)
+
+    if regions == 8:
+        pygame.draw.rect(screen, color, (bs*2 + offset[0], bs + offset[1], bs, bs), 0 if stick_position == "TOP_RIGHT" else 1)
+        pygame.draw.rect(screen, color, (bs*2 + offset[0], bs * 3 + offset[1], bs, bs), 0 if stick_position == "BOTTOM_RIGHT" else 1)
+        pygame.draw.rect(screen, color, (bs*0 + offset[0], bs * 3 + offset[1], bs, bs), 0 if stick_position == "BOTTOM_LEFT" else 1)
+        pygame.draw.rect(screen, color, (bs*0 + offset[0], bs + offset[1], bs, bs), 0 if stick_position == "TOP_LEFT" else 1)
+
+bs = 100
+left_offset = (50, 20)
+right_offset = (400, 20)
 while True:
 
     pygame.display.flip()
@@ -173,116 +212,65 @@ while True:
     input_manager.keys_down['right_trigger'] = get_left_trigger() > 0.5
     input_manager.keys_down['left_trigger'] = get_right_trigger() > 0.5
 
-    r_sttck = left_analog_stick()
+    left_stick = left_analog_stick()
     right_stick = right_analog_stick()
 
-    current_LQ = point_to_quadrant(r_sttck)
-    bs = 100
-    offset = (50, 20)
-    color = (150, 0, 255)
-    pygame.draw.rect(s, color, (bs + offset[0], bs + offset[1], bs, bs), 0 if current_LQ == "UP" else 1)
-    pygame.draw.rect(s, color, (bs + offset[0], bs * 2 + offset[1], bs, bs), 0 if current_LQ == "CENTER" else 1)
-    pygame.draw.rect(s, color, (bs + offset[0], bs * 3 + offset[1], bs, bs), 0 if current_LQ == "DOWN" else 1)
-    pygame.draw.rect(s, color, (0 + offset[0], bs * 2 + offset[1], bs, bs), 0 if current_LQ == "LEFT" else 1)
-    pygame.draw.rect(s, color, (bs * 2 + offset[0], bs * 2 + offset[1], bs, bs), 0 if current_LQ == "RIGHT" else 1)
+    if get_right_trigger() > 0.5: right_color = (0, 255, 150)
+    else: right_color = (150, 0, 255)
 
-    left_delay = 0
+    if get_left_trigger() > 0.5: left_color = (255, 150, 0)
+    else: left_color = (255, 0, 150)
 
-    left_octave = 0
+    current_LP = point_to_quadrant(left_stick)
+    current_RP = point_to_quadrant(right_stick)
+    current_left_trigger = get_left_trigger() > 0.5
+    current_right_trigger = get_right_trigger() > 0.5
 
-    if current_LQ == "DOWN":
-        if old_LQ != "DOWN":
-            midiout.send_message([0x90, to_note('A', 0), 112])
-            #player_1.note_on(to_note('A', 0), 127)
-        left_note = ('A', 0)
-    #else: player_1.note_off(to_note('A', 0))
+    draw_pad(s, left_color, bs, left_offset, current_LP, 4)
+    draw_pad(s, right_color, bs, right_offset, current_RP, 4)
 
-    if current_LQ == "LEFT":
-        if old_LQ != "LEFT":
-            midiout.send_message([0x90, to_note('B', 0), 112])
-            #player_1.note_on(to_note('B', 0), 127)
-        left_note = ('B', 0)
-    #else: player_1.note_off(to_note('B', 0))
+    right_normal_notes = {
+        "BOTTOM"    :   [('A', 0), ('C', 1)],
+        "LEFT"      :   [('B', 0)],
+        "TOP"       :   [('C', 1)],
+        "RIGHT"     :   [('D', 1)]
+    }
+    right_alternate_notes = {}
 
-    if current_LQ == "UP":
-        if old_LQ != "UP":
-            midiout.send_message([0x90, to_note('C', 1), 112])
-                #"UP": player_1.note_on(to_note('C', 1), 127)
-        left_note = ('C#', 0)
-   # else: player_1.note_off(to_note('C', 1))
+    left_normal_notes = {
+        "BOTTOM"    :   [('E', 1)],
+        "LEFT"      :   [('F', 1)],
+        "TOP"       :   [('G', 1)],
+        "RIGHT"     :   [('A', 1)]
+    }
+    left_alternate_notes = {}
 
-    if current_LQ == "RIGHT":
-        if old_LQ != "RIGHT":
-            midiout.send_message([0x90, to_note('E', 1), 112])
-            #player_1.note_on(to_note('E', 1), 127)
-        left_note = ('Ab', 0)
-    #else: player_1.note_off(to_note('E', 0))
+    right_notes = right_normal_notes if get_right_trigger() < 0.5 else right_alternate_notes
+    for key in right_notes.keys():
+        if current_RP == key:
+            if old_RP != key or (current_right_trigger and not old_right_trigger):
+                for note in right_notes[key]:
+                    midiout.send_message([0x90, to_note(note[0], note[1]), 112])
+        else:
+            if old_RP == key:
+                for note in right_notes[key]:
+                    midiout.send_message([0x80, to_note(note[0], note[1]), 112])
 
-    old_LQ = current_LQ
+    left_notes = left_normal_notes if get_left_trigger() < 0.5 else left_alternate_notes
+    for key in left_notes.keys():
+        if current_LP == key:
+            if old_LP != key or (current_left_trigger and not current_left_trigger):
+                for note in left_notes[key]:
+                    midiout.send_message([0x90, to_note(note[0], note[1]), 112])
+        else:
+            if old_LP == key:
+                for note in left_notes[key]:
+                    midiout.send_message([0x80, to_note(note[0], note[1]), 112])
 
-    current_RQ = point_to_quadrant(right_stick)
-    offset = (450, 20)
-    color = (150, 255, 0)
-    pygame.draw.rect(s, color, (bs + offset[0], bs + offset[1], bs, bs), 0 if current_RQ == "UP" else 1)
-    pygame.draw.rect(s, color, (bs + offset[0], bs * 2 + offset[1], bs, bs), 0 if current_RQ == "CENTER" else 1)
-    pygame.draw.rect(s, color, (bs + offset[0], bs * 3 + offset[1], bs, bs), 0 if current_RQ == "DOWN" else 1)
-    pygame.draw.rect(s, color, (0 + offset[0], bs * 2 + offset[1], bs, bs), 0 if current_RQ == "LEFT" else 1)
-    pygame.draw.rect(s, color, (bs * 2 + offset[0], bs * 2 + offset[1], bs, bs), 0 if current_RQ == "RIGHT" else 1)
-
-    # Depending on the quadrant I would like different responses.
-    # The symmetry between the two sticks should provide the harmony here.
-    # i.e. if you're playing the two in the same way, expect them to follow each other.
-    # Opposing symmetry should harmonize and in-betweens should be just that.
-    right_delay = 0
-
-    if current_LQ == "CENTER": continue
-
-    if current_RQ == "DOWN":
-        if old_RQ != "DOWN":
-            if current_LQ == 'DOWN':
-                long_minor("A", -2, delay = 0)
-            if current_LQ == 'LEFT':
-                long_major("C", -2, delay=0)  # I don't have a match on B exactly.
-            if current_LQ == 'UP':
-                long_major("F", -2, delay = 0) # I don't have a match on B exactly.
-            if current_LQ == 'RIGHT':
-                long_major("G", -2, delay = 0) # I don't have a match on B exactly.
-
-    if current_RQ == "LEFT":
-        if old_RQ != "LEFT":
-            if current_LQ == 'LEFT':
-                long_major("G", -2, delay = 0) # I don't have a match on B exactly.
-            if current_LQ == 'DOWN':
-                long_major("G", -2, delay = 0)
-            if current_LQ == 'UP':
-                long_major("G", -2, delay = 0) # I don't have a match on B exactly.
-            if current_LQ == 'RIGHT':
-                long_major("A", -2, delay = 0) # I don't have a match on B exactly.
-
-    if current_RQ == "UP":
-        if old_RQ != "UP":
-            if current_LQ == 'UP':
-                long_major("C", -2, delay = 0) # I don't have a match on B exactly.
-            if current_LQ == 'DOWN':
-                long_major("E", -1, delay = 0)
-            if current_LQ == 'LEFT':
-                long_minor("E", -2, delay = 0) # I don't have a match on B exactly.
-            if current_LQ == 'RIGHT':
-                long_major("B", -2, delay = 0) # I don't have a match on B exactly.
-
-    if current_RQ == "RIGHT":
-        if old_RQ != "RIGHT":
-            if current_LQ == 'RIGHT':
-                long_major("E", -2, delay = 0) # I don't have a match on B exactly.
-            if current_LQ == 'DOWN':
-                long_major("F", -2, delay = 0)
-            if current_LQ == 'LEFT':
-                long_major("D", -2, delay = 0) # I don't have a match on B exactly.
-            if current_LQ == 'UP':
-                long_major("D", -2, delay = 0) # I don't have a match on B exactly.
-
-    old_RQ = current_RQ
-
+    old_LP = current_LP
+    old_RP = current_RP
+    old_left_trigger = current_left_trigger
+    old_right_trigger = current_right_trigger
 
     j.dispatch_events()
     p_clock.tick(60)

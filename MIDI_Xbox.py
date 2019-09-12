@@ -202,6 +202,8 @@ def draw_pad(screen, color, bs, offset, stick_position, regions):
 bs = 100
 left_offset = (50, 20)
 right_offset = (400, 20)
+current_note = None
+
 while True:
 
     pygame.display.flip()
@@ -221,40 +223,46 @@ while True:
     if get_left_trigger() > 0.5: left_color = (255, 150, 0)
     else: left_color = (255, 0, 150)
 
-    current_LP = point_to_quadrant(left_stick)
-    current_RP = point_to_quadrant(right_stick)
+    current_LP = point_to_octant(right_stick)
+    current_RP = point_to_octant(left_stick)
     current_left_trigger = get_left_trigger() > 0.5
     current_right_trigger = get_right_trigger() > 0.5
 
-    draw_pad(s, left_color, bs, left_offset, current_LP, 4)
-    draw_pad(s, right_color, bs, right_offset, current_RP, 4)
+    draw_pad(s, left_color, bs, left_offset, current_LP, 8)
+    draw_pad(s, right_color, bs, right_offset, current_RP, 8)
 
     right_normal_notes = {
-        "BOTTOM"    :   [('A', 0), ('C', 1)],
-        "LEFT"      :   [('B', 0)],
-        "TOP"       :   [('C', 1)],
-        "RIGHT"     :   [('D', 1)]
+        "BOTTOM"    :   [('A', 0)],
+        "BOTTOM_LEFT":  [('B', 0)],
+        "LEFT"      :   [('C', 1)],
+        "TOP_LEFT"  :   [('D', 1)],
+        "TOP"       :   [('E', 1)],
+        "TOP_RIGHT" :   [('F', 1)],
+        "RIGHT"     :   [('G', 1)],
+        "BOTTOM_RIGHT": [('A', 1)],
     }
     right_alternate_notes = {}
 
     left_normal_notes = {
-        "BOTTOM"    :   [('E', 1)],
-        "LEFT"      :   [('F', 1)],
-        "TOP"       :   [('G', 1)],
-        "RIGHT"     :   [('A', 1)]
+        "BOTTOM"    :   [('D', -2), ('D', -1), ('A', -1)],
+        "LEFT"      :   [('F#', -2), ('F#', -1), ('C#', -1)],
+        "TOP"       :   [('G', -2), ('G', -1), ('D', -1)],
+        "RIGHT"     :   [('A', -2), ('A', -1), ('E', -1)]
     }
     left_alternate_notes = {}
+    right_notes = right_normal_notes #if get_right_trigger() < 0.5 else right_alternate_notes
 
-    right_notes = right_normal_notes if get_right_trigger() < 0.5 else right_alternate_notes
     for key in right_notes.keys():
-        if current_RP == key:
-            if old_RP != key or (current_right_trigger and not old_right_trigger):
-                for note in right_notes[key]:
-                    midiout.send_message([0x90, to_note(note[0], note[1]), 112])
+        if current_right_trigger and not old_right_trigger and current_RP == key:
+            #if old_RP != key: # or (current_right_trigger and not old_right_trigger):
+            for note in right_notes[key]:
+                midiout.send_message([0x90, to_note(note[0], note[1]), 112])
+                current_note = key
         else:
-            if old_RP == key:
+            if not current_right_trigger and current_note == key: # old_RP == key:
                 for note in right_notes[key]:
                     midiout.send_message([0x80, to_note(note[0], note[1]), 112])
+                current_note = None
 
     left_notes = left_normal_notes if get_left_trigger() < 0.5 else left_alternate_notes
     for key in left_notes.keys():

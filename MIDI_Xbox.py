@@ -148,37 +148,23 @@ def long_minor(base_letter, octave, delay=0.05):
     midiout.send_message([0x90, letter_code+15, 112])
     #player_1.note_on(letter_code + 15, 127)
 
-def point_to_octant(point):
-    angle = math.atan2(point[0], point[1]) * 2.0 / (2.0*math.pi)
+def point_to_arbitrary(point, segments):
+    angle = 0.5 * (1 - (math.atan2( point[0], point[1] ) / math.pi)) # 1 to -1
     magnitude = math.sqrt(point[0]**2 + point[1]**2)
 
-    CE = 0.0 # Cardinal expansion. I thought this would be nice because it's harder to hit diagonals from center,
-            # but it also means spinning the stick won't produce even spacing, which I definitely would like to keep.
-
-    if magnitude < 0.8: return "CENTER"
+    if magnitude > 0.8:
+        seg_size = 1.0 / segments
+        # The top case is weird, but everything else should be fine.
+        first_range = [(1-seg_size/2.0, 1), (0, seg_size/2.0)]
+        other_ranges = [(seg_size/2.0 + n * seg_size, seg_size/2.0 + (n+1) * seg_size) for n in range(0, segments-1)]
+        if any([r[0] < angle < r[1] for r in first_range]):
+            return 0
+        for n in range(len(other_ranges)):
+           if other_ranges[n][0] < angle < other_ranges[n][1]:
+                #print('segment ', n+1)
+                return n+1
     else:
-        if (1.0 > angle > 0.875 + CE) or (-0.875 - CE > angle > -1.0): return "TOP"
-        if (0.125 - CE > angle > 0) or (0 > angle > -0.125 + CE): return "BOTTOM"
-
-        if 0.875 + CE > angle > 0.625 - CE: return "TOP_RIGHT"
-        if 0.625 - CE > angle > 0.375 + CE: return "RIGHT"
-        if 0.375 + CE > angle > 0.125 - CE: return "BOTTOM_RIGHT"
-
-        if -0.125 + CE > angle > -0.375 - CE: return "BOTTOM_LEFT"
-        if -0.375 - CE > angle > -0.625 + CE: return "LEFT"
-        if -0.625 + CE > angle > -0.875 - CE: return "TOP_LEFT"
-
-def point_to_quadrant(point):
-
-    angle = math.atan2(point[0], point[1]) * (360.0 / (2.0 * math.pi))
-    magnitude = math.sqrt(point[0]**2 + point[1]**2)
-
-    if magnitude < 0.3: return "CENTER"
-    else:
-        if (180 > angle > 135) or (-135 > angle > -180): return "TOP"
-        if (45 > angle > 0) or (0 > angle > -45): return "BOTTOM"
-        if 135 > angle > 45: return "RIGHT"
-        if -45 > angle > -135: return "LEFT"
+        return -1
 
 octave = 0
 old_LP = "CENTER"
@@ -186,24 +172,32 @@ old_RP = "CENTER"
 old_left_trigger = False
 old_right_trigger = False
 
-def draw_pad(screen, color, bs, offset, stick_position, regions):
-    pygame.draw.rect(screen, color, (bs + offset[0], bs + offset[1], bs, bs), 0 if stick_position == "TOP" else 1)
-    pygame.draw.rect(screen, color, (bs + offset[0], bs * 2 + offset[1], bs, bs), 0 if stick_position == "CENTER" else 1)
-    pygame.draw.rect(screen, color, (bs + offset[0], bs * 3 + offset[1], bs, bs), 0 if stick_position == "BOTTOM" else 1)
-    pygame.draw.rect(screen, color, (0 + offset[0], bs * 2 + offset[1], bs, bs), 0 if stick_position == "LEFT" else 1)
-    pygame.draw.rect(screen, color, (bs * 2 + offset[0], bs * 2 + offset[1], bs, bs), 0 if stick_position == "RIGHT" else 1)
-
-    if regions == 8:
-        pygame.draw.rect(screen, color, (bs*2 + offset[0], bs + offset[1], bs, bs), 0 if stick_position == "TOP_RIGHT" else 1)
-        pygame.draw.rect(screen, color, (bs*2 + offset[0], bs * 3 + offset[1], bs, bs), 0 if stick_position == "BOTTOM_RIGHT" else 1)
-        pygame.draw.rect(screen, color, (bs*0 + offset[0], bs * 3 + offset[1], bs, bs), 0 if stick_position == "BOTTOM_LEFT" else 1)
-        pygame.draw.rect(screen, color, (bs*0 + offset[0], bs + offset[1], bs, bs), 0 if stick_position == "TOP_LEFT" else 1)
-
 bs = 100
-left_offset = (50, 20)
-right_offset = (400, 20)
+left_offset = (150, 150)
+right_offset = (300, 150)
 current_note = None
 
+def draw_arbitrary_pad(screen, color, offset, stick_position, regions):
+    circle_size = 20
+    pygame.draw.circle(screen, color, offset, 50, 1)
+    #pygame.draw.circle(screen, color, offset, int(50 * 0.8), 1)
+    angle_offset = - math.pi / 2.0
+    to_xy = lambda q:([(int(50*math.cos(a)), int(50*math.sin(a))) for a in [angle_offset+q*(math.pi*2.0)/float(regions)]])
+    for n in range(regions):
+        x,y = to_xy(n)[0]
+        lx, ly = to_xy(n+0.5)[0]
+        pygame.draw.circle(screen, (0,0,0), (offset[0]+x, offset[1]+y), circle_size, 0)
+        #pygame.draw.rect(screen, (0,0,0), (offset[0]+x-circle_size/2, offset[1]+y-circle_size/2, circle_size, circle_size), 0)
+        pygame.draw.circle(screen, color, (offset[0]+x, offset[1]+y), circle_size-2, 0 if stick_position == n else 1)
+        #pygame.draw.rect(screen, color, (offset[0]+x-circle_size/2, offset[1]+y-circle_size/2, circle_size, circle_size), 0 if stick_position==n else 1)
+        #pygame.draw.line(screen, color, offset, (offset[0]+lx, offset[1]+ly), 1)
+    pygame.draw.circle(screen, (0,0,0), offset, circle_size, 0)
+    pygame.draw.circle(screen, color, offset, circle_size-2, 0 if stick_position == -1 else 1)
+
+    #rax, ray = right_analog_stick()
+    #pygame.draw.circle(screen, (255,255,255), (int(offset[0]+rax*50), int(offset[1]+ray*50)), 5, 0)
+
+SEGMENTS = 6
 while True:
 
     pygame.display.flip()
@@ -214,34 +208,47 @@ while True:
     input_manager.keys_down['right_trigger'] = get_left_trigger() > 0.5
     input_manager.keys_down['left_trigger'] = get_right_trigger() > 0.5
 
-    left_stick = left_analog_stick()
-    right_stick = right_analog_stick()
+    current_LP = point_to_arbitrary(left_analog_stick(), SEGMENTS)
+    current_RP = point_to_arbitrary(right_analog_stick(), SEGMENTS)
 
-    if get_right_trigger() > 0.5: right_color = (0, 255, 150)
-    else: right_color = (150, 0, 255)
-
-    if get_left_trigger() > 0.5: left_color = (255, 150, 0)
-    else: left_color = (255, 0, 150)
-
-    current_LP = point_to_octant(right_stick)
-    current_RP = point_to_octant(left_stick)
     current_left_trigger = get_left_trigger() > 0.5
     current_right_trigger = get_right_trigger() > 0.5
 
-    draw_pad(s, left_color, bs, left_offset, current_LP, 8)
-    draw_pad(s, right_color, bs, right_offset, current_RP, 8)
+    if current_left_trigger:
+        left_color = (255, 150, 0)
+    else:
+        left_color = (150, 255, 0)
+
+    if current_right_trigger:
+        right_color = (0, 255, 150)
+    else:
+        right_color = (255, 0, 150)
+
+    draw_arbitrary_pad(s, left_color, left_offset, current_LP, SEGMENTS)
+    draw_arbitrary_pad(s, right_color, right_offset, current_RP, SEGMENTS)
 
     right_normal_notes = {
-        "BOTTOM"    :   [('A', 0)],
-        "BOTTOM_LEFT":  [('B', 0)],
-        "LEFT"      :   [('C', 1)],
-        "TOP_LEFT"  :   [('D', 1)],
-        "TOP"       :   [('E', 1)],
-        "TOP_RIGHT" :   [('F', 1)],
-        "RIGHT"     :   [('G', 1)],
-        "BOTTOM_RIGHT": [('A', 1)],
+        "3": [('D', 0)],
+        "4": [('E', 0)],
+        "5": [('F', 0)],
+        "0": [('G', 0)],
+        "1": [('A', 0)],
+        "2": [('Bb', 0)]
     }
-    right_alternate_notes = {}
+    right_alternate_notes = {
+        #"3": [('D', 0)],
+        #"4": [('E', 0)],
+        #"5": [('F#', 0)],
+        #"0": [('G', 0)],
+        #"1": [('A', 0)],
+        #"2": [('B', 0)]
+         "3": [('D', 0)],
+         "4": [('D#', 0)],
+         "5": [('F#', 0)],
+         "0": [('G', 0)],
+         "1": [('A', 0)],
+         "2": [('Bb', 0)]
+    }
 
     left_normal_notes = {
         "BOTTOM"    :   [('D', -2), ('D', -1), ('A', -1)],
@@ -250,16 +257,19 @@ while True:
         "RIGHT"     :   [('A', -2), ('A', -1), ('E', -1)]
     }
     left_alternate_notes = {}
-    right_notes = right_normal_notes #if get_right_trigger() < 0.5 else right_alternate_notes
+    right_notes = right_normal_notes if get_right_trigger() < 0.5 else right_alternate_notes
+
+    current_RP = str(current_RP)
+    current_LP = str(current_LP)
 
     for key in right_notes.keys():
-        if current_right_trigger and not old_right_trigger and current_RP == key:
-            #if old_RP != key: # or (current_right_trigger and not old_right_trigger):
-            for note in right_notes[key]:
-                midiout.send_message([0x90, to_note(note[0], note[1]), 112])
-                current_note = key
+        if current_RP == key:
+            if old_RP != key:
+                for note in right_notes[key]:
+                    midiout.send_message([0x90, to_note(note[0], note[1]), 112])
+                    current_note = key
         else:
-            if not current_right_trigger and current_note == key: # old_RP == key:
+            if old_RP == key:
                 for note in right_notes[key]:
                     midiout.send_message([0x80, to_note(note[0], note[1]), 112])
                 current_note = None

@@ -24,13 +24,13 @@ for p in pjs: p.init()
 import time
 import rtmidi
 
-midiout = rtmidi.MidiOut()
-available_ports = midiout.get_ports()
+midiout_1 = rtmidi.MidiOut()
+available_ports = midiout_1.get_ports()
 
 if available_ports:
-    midiout.open_port(1)
+    midiout_1.open_port(1)
 else:
-    midiout.open_virtual_port("My virtual output")
+    midiout_1.open_virtual_port("My virtual output")
     print("This ran, honestly don't know if it works though.")
 
 axis_values = {}
@@ -129,23 +129,23 @@ def play(base_letter, octave, delay=0):
 '''
 def long_major(base_letter, octave, delay=0.05):
     letter_code = to_note(base_letter, octave)
-    midiout.send_message([0x90, letter_code, 112])
+    midiout_1.send_message([0x90, letter_code, 112])
     #player_1.note_on(letter_code, 127)
     time.sleep(delay)
-    midiout.send_message([0x90, letter_code+7, 112])
+    midiout_1.send_message([0x90, letter_code + 7, 112])
     #player_1.note_on(letter_code + 7, 127)
     time.sleep(delay)
-    midiout.send_message([0x90, letter_code+16, 112])
+    midiout_1.send_message([0x90, letter_code + 16, 112])
     #player_1.note_on(letter_code + 16, 127)
 def long_minor(base_letter, octave, delay=0.05):
     letter_code = to_note(base_letter, octave)
-    midiout.send_message([0x90, letter_code, 112])
+    midiout_1.send_message([0x90, letter_code, 112])
     #player_1.note_on(letter_code, 127)
     time.sleep(delay)
-    midiout.send_message([0x90, letter_code+7, 112])
+    midiout_1.send_message([0x90, letter_code + 7, 112])
     #player_1.note_on(letter_code + 7, 127)
     time.sleep(delay)
-    midiout.send_message([0x90, letter_code+15, 112])
+    midiout_1.send_message([0x90, letter_code + 15, 112])
     #player_1.note_on(letter_code + 15, 127)
 
 def point_to_arbitrary(point, segments):
@@ -175,7 +175,8 @@ old_right_trigger = False
 bs = 100
 left_offset = (150, 150)
 right_offset = (300, 150)
-current_note = None
+current_right_note = None
+current_left_note = None
 
 def draw_arbitrary_pad(screen, color, offset, stick_position, regions):
     circle_size = 20
@@ -214,50 +215,45 @@ while True:
     current_left_trigger = get_left_trigger() > 0.5
     current_right_trigger = get_right_trigger() > 0.5
 
-    if current_left_trigger:
-        left_color = (255, 150, 0)
-    else:
-        left_color = (150, 255, 0)
-
-    if current_right_trigger:
-        right_color = (0, 255, 150)
-    else:
-        right_color = (255, 0, 150)
+    left_color = (150, 255, 0)
+    right_color = (255, 0, 150)
 
     draw_arbitrary_pad(s, left_color, left_offset, current_LP, SEGMENTS)
     draw_arbitrary_pad(s, right_color, right_offset, current_RP, SEGMENTS)
 
-    right_normal_notes = {
-        "3": [('D', 0)],
-        "4": [('E', 0)],
-        "5": [('F', 0)],
-        "0": [('G', 0)],
-        "1": [('A', 0)],
-        "2": [('Bb', 0)]
+    right_notes = {
+        "3": [('D', 1)],
+        "4": [('E', 1)],
+        "5": [('F', 1)],
+        "0": [('G', 1)],
+        "1": [('A', 1)],
+        "2": [('Bb', 1)]
     }
-    right_alternate_notes = {
-        #"3": [('D', 0)],
-        #"4": [('E', 0)],
-        #"5": [('F#', 0)],
-        #"0": [('G', 0)],
-        #"1": [('A', 0)],
-        #"2": [('B', 0)]
-         "3": [('D', 0)],
-         "4": [('D#', 0)],
-         "5": [('F#', 0)],
-         "0": [('G', 0)],
-         "1": [('A', 0)],
-         "2": [('Bb', 0)]
+    right_company = {
+        "3": [('F', 1)],
+        "4": [('G', 1)],
+        "5": [('A', 1)],
+        "0": [('Bb', 1)],
+        "1": [('C', 2)],
+        "2": [('D', 2)]
     }
 
-    left_normal_notes = {
-        "BOTTOM"    :   [('D', -2), ('D', -1), ('A', -1)],
-        "LEFT"      :   [('F#', -2), ('F#', -1), ('C#', -1)],
-        "TOP"       :   [('G', -2), ('G', -1), ('D', -1)],
-        "RIGHT"     :   [('A', -2), ('A', -1), ('E', -1)]
+    left_notes = {
+        "3": [('D', -1), ('A', -1), ('F', 0)],
+        "4": [('F', -1), ('C', 0), ('G', 0), ('A', 0)],
+        "5": [('G', -1), ('D', 0), ('A', 0)],
+        "0": [('A', -1), ('E', 0), ('C#', 0)],
+        "1": [('A#', -1), ('F', 0), ('D', 0)],
+        "2": [('C', 0), ('G', 0), ('E', 0)],
     }
-    left_alternate_notes = {}
-    right_notes = right_normal_notes if get_right_trigger() < 0.5 else right_alternate_notes
+    left_company = {
+        "3": [('D', -2), ('D', -3)],
+        "4": [('F', -3), ('F', -2)],
+        "5": [('G', -3), ('G', -2)],
+        "0": [('A', -3), ('A', -2)],
+        "1": [('A#', -3), ('A#', -2)],
+        "2": [('C', -2), ('C', -1)],
+    }
 
     current_RP = str(current_RP)
     current_LP = str(current_LP)
@@ -266,24 +262,48 @@ while True:
         if current_RP == key:
             if old_RP != key:
                 for note in right_notes[key]:
-                    midiout.send_message([0x90, to_note(note[0], note[1]), 112])
-                    current_note = key
+                    midiout_1.send_message([0x90, to_note(note[0], note[1]), 112])
+                    current_right_note = key
+            if current_right_trigger:
+                if not old_right_trigger:
+                    for note in right_company[key]:
+                        midiout_1.send_message([0x90, to_note(note[0], note[1]), 112])
         else:
             if old_RP == key:
                 for note in right_notes[key]:
-                    midiout.send_message([0x80, to_note(note[0], note[1]), 112])
-                current_note = None
+                    midiout_1.send_message([0x80, to_note(note[0], note[1]), 112])
+                current_right_note = None
+            if not current_right_trigger and old_right_trigger:
+                for note in right_company[key]:
+                    midiout_1.send_message([0x80, to_note(note[0], note[1], 112)])
 
-    left_notes = left_normal_notes if get_left_trigger() < 0.5 else left_alternate_notes
     for key in left_notes.keys():
         if current_LP == key:
-            if old_LP != key or (current_left_trigger and not current_left_trigger):
+            if old_LP != key:
                 for note in left_notes[key]:
-                    midiout.send_message([0x90, to_note(note[0], note[1]), 112])
+                    midiout_1.send_message([0x90, to_note(note[0], note[1]), 112])
+                    current_left_note = key
+                # if current_left_trigger:
+                #      for note in left_company[key]:
+                #          midiout.send_message([0x90, to_note(note[0], note[1]), 112])
+            if current_left_trigger:
+                if not old_left_trigger:
+                    for note in left_company[key]:
+                        midiout_1.send_message([0x90, to_note(note[0], note[1]), 112])
+            else:
+                if old_left_trigger:
+                    for note in left_company[key]:
+                        midiout_1.send_message([0x80, to_note(note[0], note[1], 112)])
         else:
             if old_LP == key:
                 for note in left_notes[key]:
-                    midiout.send_message([0x80, to_note(note[0], note[1]), 112])
+                    midiout_1.send_message([0x80, to_note(note[0], note[1]), 112])
+                    current_left_note = None
+                # for note in left_company[key]:
+                #     midiout.send_message([0x80, to_note(note[0], note[1]), 112])
+            if not current_left_trigger and old_left_trigger:
+                for note in left_company[key]:
+                    midiout_1.send_message([0x80, to_note(note[0], note[1], 112)])
 
     old_LP = current_LP
     old_RP = current_RP

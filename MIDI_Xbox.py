@@ -223,6 +223,8 @@ while True:
             midiout_1.send_message([0x90, to_note(note[0], note[1]), note[2]])
 
     # Turning on notes for the left trigger.
+    # Something buggy here still - if you change the right note it will change the accompaniment,
+    # even if the left note is still playing.
     for key in LEFT_STICK_COMPANY.keys():
 
         # Turning on the right notes.
@@ -231,6 +233,7 @@ while True:
         if not current_left_trigger: continue # Don't activate if the trigger isn't held down.
         if old_left_trigger and current_LP == old_LP and (accompany is not None and accompany[0] != 'C'): continue # Don't activate if not pressed again
                                                                # and there's no stick change.
+        if key[0] != harmony[0] and harmony[0] != 'C': continue
 
         accompany = key # Record what the currently held accompaniment is.
         for note in LEFT_STICK_COMPANY[key]:

@@ -77,7 +77,7 @@ def point_to_arbitrary(point, segments):
                 #print('segment ', n+1)
                 return n+1
     else:
-        return -1
+        return 'C' # For center.
 
 octave = 0
 old_LP = "CENTER"
@@ -123,6 +123,11 @@ old_left_company_key = None
 current_right_company_key = None
 old_right_company_key = None
 
+left_color = (150, 255, 0)
+right_color = (255, 0, 150)
+harmony = None
+accompany = None
+
 SEGMENTS = 4
 while True:
 
@@ -133,17 +138,12 @@ while True:
     input_manager.update_inputs(pygame.event.get(), debug=False)
     input_manager.keys_down['right_trigger'] = get_left_trigger() > 0.5
     input_manager.keys_down['left_trigger'] = get_right_trigger() > 0.5
-
-    current_LP = point_to_arbitrary(left_analog_stick(), SEGMENTS)
+    current_COMBINED_P = point_to_arbitrary(left_analog_stick(), SEGMENTS)
     current_RP = point_to_arbitrary(right_analog_stick(), SEGMENTS)
-
+    current_LP = point_to_arbitrary(left_analog_stick(), SEGMENTS)
     current_left_trigger = get_left_trigger() > 0.5
     current_right_trigger = get_right_trigger() > 0.5
-
-    left_color = (150, 255, 0)
-    right_color = (255, 0, 150)
-
-    draw_arbitrary_pad(s, left_color, left_offset, current_LP, old_LP, SEGMENTS)
+    draw_arbitrary_pad(s, left_color, left_offset, current_COMBINED_P, old_LP, SEGMENTS)
     draw_arbitrary_pad(s, right_color, right_offset, current_RP, old_RP, SEGMENTS)
 
     current_RP = str(current_RP)
@@ -191,46 +191,52 @@ while True:
                 for note in RIGHT_STICK_COMPANY[key]:
                     midiout_1.send_message([0x80, to_note(note[0], note[1], 112)])
 
+
+    # Turning off notes for the left stick.
     for key in LEFT_STICK_NOTES.keys():
-        if current_LP == key:
-            if old_LP != key:
 
-                for note in LEFT_STICK_NOTES[key]:
-                    midiout_1.send_message([0x90, to_note(note[0], note[1]), note[2]])
-                    current_left_note = key
-
-                if current_left_trigger:
-                    old_left_company_key = current_left_company_key
-                    current_left_company_key = key
-
-                    # First, turn off all the old company notes.
-                    if old_left_company_key is not None:
-                        for note in LEFT_STICK_COMPANY[old_left_company_key]:
-                            midiout_1.send_message([0x80, to_note(note[0], note[1]), note[2]])
-
-                    # Then turn on the new accompanying notes.
-                    for note in LEFT_STICK_COMPANY[key]:
-                      midiout_1.send_message([0x90, to_note(note[0], note[1]), note[2]])
-
-            if current_left_trigger:
-                if not old_left_trigger:
-                    # Then turn on the new ones.
-                    for note in LEFT_STICK_COMPANY[key]:
-                        midiout_1.send_message([0x90, to_note(note[0], note[1]), note[2]])
-            else:
-                if old_left_trigger:
-                    for note in LEFT_STICK_COMPANY[key]:
-                        midiout_1.send_message([0x80, to_note(note[0], note[1], 112)])
-        else:
-            if old_LP == key:
+        if old_LP != current_LP:
+            if key == harmony:
                 for note in LEFT_STICK_NOTES[key]:
                     midiout_1.send_message([0x80, to_note(note[0], note[1]), note[2]])
-                    current_left_note = None
-                # for note in left_company[key]:
-                #     midiout.send_message([0x80, to_note(note[0], note[1]), note[2]])
-            if not current_left_trigger and old_left_trigger:
+                harmony = None
+
+    # Having trigger state determine if 1, 2, or 3 notes are played could be cool.
+    # Turning off notes for the left trigger.
+    for key in LEFT_STICK_COMPANY.keys():
+
+        if old_LP != current_LP or (old_left_trigger and not current_left_trigger):
+            if key == harmony:
                 for note in LEFT_STICK_COMPANY[key]:
-                    midiout_1.send_message([0x80, to_note(note[0], note[1], 112)])
+                    midiout_1.send_message([0x80, to_note(note[0], note[1]), note[2]])
+
+    # Turning on notes for the left stick.
+    for key in LEFT_STICK_NOTES.keys():
+
+        # Turning on the right notes.
+        if key[0] != current_RP: continue # Don't activate any notes not associated with right position.
+        if key[1] != current_LP: continue # Don't activate notes not associated with the left position.
+        if current_LP == old_LP and (harmony is not None and harmony[0]!='C'): continue # Don't play new harmony if the harmony stick didn't move.
+
+        harmony = key # Record what the currently held harmony is.
+        for note in LEFT_STICK_NOTES[key]:
+            midiout_1.send_message([0x90, to_note(note[0], note[1]), note[2]])
+
+    # If old_RP was center ('C'), then fire.
+
+    # Turning off notes for the left trigger.
+    for key in LEFT_STICK_COMPANY.keys():
+
+        # Turning on the right notes.
+        if key[0] != current_RP: continue # Don't activate any notes not associated with right position.
+        if key[1] != current_LP: continue # Don't activate notes not associated with the left position.
+        if not current_left_trigger: continue # Don't activate if the trigger isn't held down.
+        if old_left_trigger and current_LP == old_LP: continue # Don't activate if not pressed again
+                                                               # and there's no stick change.
+
+        accompany = key # Record what the currently held accompaniment is.
+        for note in LEFT_STICK_COMPANY[key]:
+            midiout_1.send_message([0x90, to_note(note[0], note[1]), note[2]])
 
     old_LP = current_LP
     old_RP = current_RP

@@ -233,7 +233,7 @@ while True:
         if not current_left_trigger: continue # Don't activate if the trigger isn't held down.
         if old_left_trigger and current_LP == old_LP and (accompany is not None and accompany[0] != 'C'): continue # Don't activate if not pressed again
                                                                # and there's no stick change.
-        if key[0] != harmony[0] and harmony[0] != 'C': continue
+        if  not (current_left_trigger and not old_left_trigger) and key[0] != harmony[0] and harmony[0] != 'C': continue
 
         accompany = key # Record what the currently held accompaniment is.
         for note in LEFT_STICK_COMPANY[key]:

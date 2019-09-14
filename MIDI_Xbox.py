@@ -2,6 +2,13 @@ import pygame
 import pygame.midi as md
 from input_codes import controller, input_manager
 import time
+
+from note_mapping import to_note
+from note_mapping import RIGHT_STICK_NOTES
+from note_mapping import LEFT_STICK_NOTES
+from note_mapping import RIGHT_STICK_COMPANY
+from note_mapping import LEFT_STICK_COMPANY
+
 import math
 pygame.init()
 pygame.midi.init()
@@ -14,14 +21,6 @@ j = joysticks[0]
 pjs = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
 for p in pjs: p.init()
 
-#player_1 = pygame.midi.Output(0)
-#player.set_instrument(12) # bells
-#player.set_instrument(15) # bells
-#player.set_instrument(40) # violin
-# 78 is a whistle. 25 is a clavichord/banjoy
-#player_1.set_instrument(130)
-
-import time
 import rtmidi
 
 midiout_1 = rtmidi.MidiOut()
@@ -37,20 +36,12 @@ axis_values = {}
 
 @j.event
 def on_axis(axis, value):
-
-
     axis_values[axis] = value
     if axis == "left_trigger":
         input_manager.left[0] = value
     elif axis == "right_trigger":
         input_manager.right[0] = value
-    #j.set_vibration(left[0], right[0])
-
-# Examples:
-# input_manager.axes['ax00']
-# input_manager.left[0]
-# input_manager.pressed('bt00')
-# input_manager.hats['ht00'][1]
+    #j.set_vibration(input_manager.left[0]/3.0, input_manager.left[0]/5.0)
 
 def A_pressed(): return input_manager.pressed('bt00')
 def B_pressed(): return input_manager.pressed('bt01')
@@ -68,86 +59,10 @@ def left_analog_stick():
     x_axis = 0.01 if 'ax00' not in input_manager.axes else input_manager.axes['ax00']
     y_axis = 0.01 if 'ax01' not in input_manager.axes else input_manager.axes['ax01']
     return x_axis, y_axis
-
 def right_analog_stick():
     x_axis = 0.01 if 'ax04' not in input_manager.axes else input_manager.axes['ax04']
     y_axis = 0.01 if 'ax03' not in input_manager.axes else input_manager.axes['ax03']
     return x_axis, y_axis
-
-def to_note(letter, octave, delay=0.05):
-    letter_code = {
-        'C' : 0,
-        'C#' : 1,
-        'Db':1,
-        'D' : 2,
-        'D#': 3,
-        'Eb':3,
-        'E': 4,
-        'Fb':5,
-        'F':5,
-        'F#':6,
-        'Gb':6,
-        'G':7,
-        'G#':8,
-        'Ab':8,
-        'A':9,
-        'A#':10,
-        'Bb':10,
-        'B':11,
-        'B#':12
-    }
-    return 60 + 12 * octave + letter_code[letter]
-
-'''def major(base_letter, octave, delay=0.05):
-    letter_code = to_note(base_letter, octave)
-    player_1.note_on(letter_code, 127)
-    time.sleep(delay)
-    player_1.note_on(letter_code + 4, 127)
-    time.sleep(delay)
-    player_1.note_on(letter_code + 7, 127)
-def minor(base_letter, octave, delay=0.05):
-    letter_code = to_note(base_letter, octave)
-    player_1.note_on(letter_code, 127)
-    time.sleep(delay)
-    player_1.note_on(letter_code + 3, 127)
-    time.sleep(delay)
-    player_1.note_on(letter_code + 7, 127)
-def felt(base_letter, octave, delay=0.05):
-    letter_code = to_note(base_letter, octave)
-    player_1.note_on(letter_code, 127)
-    time.sleep(delay)
-    player_1.note_on(letter_code + 0, 127)
-    time.sleep(delay)
-    player_1.note_on(letter_code + 4, 127)
-    time.sleep(delay)
-    player_1.note_on(letter_code + 5, 127)
-    time.sleep(delay)
-    player_1.note_on(letter_code + 9, 127)
-
-def play(base_letter, octave, delay=0):
-    player_1.note_on(to_note(base_letter, octave), 127)
-'''
-def long_major(base_letter, octave, delay=0.05):
-    letter_code = to_note(base_letter, octave)
-    midiout_1.send_message([0x90, letter_code, 112])
-    #player_1.note_on(letter_code, 127)
-    time.sleep(delay)
-    midiout_1.send_message([0x90, letter_code + 7, 112])
-    #player_1.note_on(letter_code + 7, 127)
-    time.sleep(delay)
-    midiout_1.send_message([0x90, letter_code + 16, 112])
-    #player_1.note_on(letter_code + 16, 127)
-def long_minor(base_letter, octave, delay=0.05):
-    letter_code = to_note(base_letter, octave)
-    midiout_1.send_message([0x90, letter_code, 112])
-    #player_1.note_on(letter_code, 127)
-    time.sleep(delay)
-    midiout_1.send_message([0x90, letter_code + 7, 112])
-    #player_1.note_on(letter_code + 7, 127)
-    time.sleep(delay)
-    midiout_1.send_message([0x90, letter_code + 15, 112])
-    #player_1.note_on(letter_code + 15, 127)
-
 def point_to_arbitrary(point, segments):
     angle = 0.5 * (1 - (math.atan2( point[0], point[1] ) / math.pi)) # 1 to -1
     magnitude = math.sqrt(point[0]**2 + point[1]**2)
@@ -194,9 +109,13 @@ def draw_arbitrary_pad(screen, color, offset, stick_position, regions):
         #pygame.draw.line(screen, color, offset, (offset[0]+lx, offset[1]+ly), 1)
     pygame.draw.circle(screen, (0,0,0), offset, circle_size, 0)
     pygame.draw.circle(screen, color, offset, circle_size-2, 0 if stick_position == -1 else 1)
-
     #rax, ray = right_analog_stick()
     #pygame.draw.circle(screen, (255,255,255), (int(offset[0]+rax*50), int(offset[1]+ray*50)), 5, 0)
+
+current_left_company_key = None
+old_left_company_key = None
+current_right_company_key = None
+old_right_company_key = None
 
 SEGMENTS = 6
 while True:
@@ -221,88 +140,108 @@ while True:
     draw_arbitrary_pad(s, left_color, left_offset, current_LP, SEGMENTS)
     draw_arbitrary_pad(s, right_color, right_offset, current_RP, SEGMENTS)
 
-    right_notes = {
-        "3": [('D', 1)],
-        "4": [('E', 1)],
-        "5": [('F', 1)],
-        "0": [('G', 1)],
-        "1": [('A', 1)],
-        "2": [('Bb', 1)]
-    }
-    right_company = {
-        "3": [('F', 1)],
-        "4": [('G', 1)],
-        "5": [('A', 1)],
-        "0": [('Bb', 1)],
-        "1": [('C', 2)],
-        "2": [('D', 2)]
-    }
-
-    left_notes = {
-        "3": [('D', -1), ('A', -1), ('F', 0)],
-        "4": [('F', -1), ('C', 0), ('G', 0), ('A', 0)],
-        "5": [('G', -1), ('D', 0), ('A', 0)],
-        "0": [('A', -1), ('E', 0), ('C#', 0)],
-        "1": [('A#', -1), ('F', 0), ('D', 0)],
-        "2": [('C', 0), ('G', 0), ('E', 0)],
-    }
-    left_company = {
-        "3": [('D', -2), ('D', -3)],
-        "4": [('F', -3), ('F', -2)],
-        "5": [('G', -3), ('G', -2)],
-        "0": [('A', -3), ('A', -2)],
-        "1": [('A#', -3), ('A#', -2)],
-        "2": [('C', -2), ('C', -1)],
-    }
-
     current_RP = str(current_RP)
     current_LP = str(current_LP)
 
-    for key in right_notes.keys():
+    # If the trigger is released, the note it was playing stops.
+    # If the trigger is pressed, the note intended is played.
+    # If the stick changes while the trigger is pressed, the old note releases and the new one
+    # gets played.
+
+    for key in RIGHT_STICK_NOTES.keys():
         if current_RP == key:
             if old_RP != key:
-                for note in right_notes[key]:
-                    midiout_1.send_message([0x90, to_note(note[0], note[1]), 112])
+
+                for note in RIGHT_STICK_NOTES[key]:
+                    midiout_1.send_message([0x90, to_note(note[0], note[1]), note[2]])
                     current_right_note = key
+
+                if current_right_trigger:
+                    print("CHANGED WHILE TRIGGER")
+
+                    print(old_right_company_key, current_right_company_key)
+
+                    old_right_company_key = current_right_company_key
+                    current_right_company_key = key
+
+                    print(old_right_company_key, current_right_company_key)
+
+                    # First, turn off all the old company notes.
+                    if old_right_company_key is not None:
+                        for note in RIGHT_STICK_COMPANY[old_right_company_key]:
+                            print("off", note)
+                            midiout_1.send_message([0x80, to_note(note[0], note[1]), note[2]])
+
+                    # Then turn on the new accompanying notes.
+                    for note in RIGHT_STICK_COMPANY[key]:
+                        midiout_1.send_message([0x90, to_note(note[0], note[1]), note[2]])
+
             if current_right_trigger:
                 if not old_right_trigger:
-                    for note in right_company[key]:
-                        midiout_1.send_message([0x90, to_note(note[0], note[1]), 112])
+                    # Then turn on the new ones.
+                    for note in RIGHT_STICK_COMPANY[key]:
+                        midiout_1.send_message([0x90, to_note(note[0], note[1]), note[2]])
+            else:
+                if old_right_trigger:
+                    for note in RIGHT_STICK_COMPANY[key]:
+                        midiout_1.send_message([0x80, to_note(note[0], note[1], 112)])
         else:
             if old_RP == key:
-                for note in right_notes[key]:
-                    midiout_1.send_message([0x80, to_note(note[0], note[1]), 112])
-                current_right_note = None
+                for note in RIGHT_STICK_NOTES[key]:
+                    midiout_1.send_message([0x80, to_note(note[0], note[1]), note[2]])
+                    current_right_note = None
+                # for note in right_company[key]:
+                #     midiout.send_message([0x80, to_note(note[0], note[1]), note[2]])
             if not current_right_trigger and old_right_trigger:
-                for note in right_company[key]:
+                for note in RIGHT_STICK_COMPANY[key]:
                     midiout_1.send_message([0x80, to_note(note[0], note[1], 112)])
 
-    for key in left_notes.keys():
+    for key in LEFT_STICK_NOTES.keys():
         if current_LP == key:
             if old_LP != key:
-                for note in left_notes[key]:
-                    midiout_1.send_message([0x90, to_note(note[0], note[1]), 112])
+
+                for note in LEFT_STICK_NOTES[key]:
+                    midiout_1.send_message([0x90, to_note(note[0], note[1]), note[2]])
                     current_left_note = key
-                # if current_left_trigger:
-                #      for note in left_company[key]:
-                #          midiout.send_message([0x90, to_note(note[0], note[1]), 112])
+
+                if current_left_trigger:
+                    print("CHANGED WHILE TRIGGER")
+
+                    print(old_left_company_key, current_left_company_key)
+
+                    old_left_company_key = current_left_company_key
+                    current_left_company_key = key
+
+                    print(old_left_company_key, current_left_company_key)
+
+                    # First, turn off all the old company notes.
+                    if old_left_company_key is not None:
+                        for note in LEFT_STICK_COMPANY[old_left_company_key]:
+                            print("off", note)
+                            midiout_1.send_message([0x80, to_note(note[0], note[1]), note[2]])
+
+                    # Then turn on the new accompanying notes.
+                    for note in LEFT_STICK_COMPANY[key]:
+                      midiout_1.send_message([0x90, to_note(note[0], note[1]), note[2]])
+
             if current_left_trigger:
                 if not old_left_trigger:
-                    for note in left_company[key]:
-                        midiout_1.send_message([0x90, to_note(note[0], note[1]), 112])
+                    # Then turn on the new ones.
+                    for note in LEFT_STICK_COMPANY[key]:
+                        midiout_1.send_message([0x90, to_note(note[0], note[1]), note[2]])
             else:
                 if old_left_trigger:
-                    for note in left_company[key]:
+                    for note in LEFT_STICK_COMPANY[key]:
                         midiout_1.send_message([0x80, to_note(note[0], note[1], 112)])
         else:
             if old_LP == key:
-                for note in left_notes[key]:
-                    midiout_1.send_message([0x80, to_note(note[0], note[1]), 112])
+                for note in LEFT_STICK_NOTES[key]:
+                    midiout_1.send_message([0x80, to_note(note[0], note[1]), note[2]])
                     current_left_note = None
                 # for note in left_company[key]:
-                #     midiout.send_message([0x80, to_note(note[0], note[1]), 112])
+                #     midiout.send_message([0x80, to_note(note[0], note[1]), note[2]])
             if not current_left_trigger and old_left_trigger:
-                for note in left_company[key]:
+                for note in LEFT_STICK_COMPANY[key]:
                     midiout_1.send_message([0x80, to_note(note[0], note[1], 112)])
 
     old_LP = current_LP

@@ -191,7 +191,6 @@ while True:
                 for note in RIGHT_STICK_COMPANY[key]:
                     midiout_1.send_message([0x80, to_note(note[0], note[1], 112)])
 
-
     # Turning off notes for the left stick.
     for key in LEFT_STICK_NOTES.keys():
 
@@ -205,10 +204,11 @@ while True:
     # Turning off notes for the left trigger.
     for key in LEFT_STICK_COMPANY.keys():
 
-        if old_LP != current_LP or (old_left_trigger and not current_left_trigger):
-            if key == harmony:
+        if (old_LP != current_LP and current_LP != 'C') or (old_left_trigger and not current_left_trigger):
+            if key == accompany:
                 for note in LEFT_STICK_COMPANY[key]:
                     midiout_1.send_message([0x80, to_note(note[0], note[1]), note[2]])
+                accompany = None
 
     # Turning on notes for the left stick.
     for key in LEFT_STICK_NOTES.keys():
@@ -222,16 +222,14 @@ while True:
         for note in LEFT_STICK_NOTES[key]:
             midiout_1.send_message([0x90, to_note(note[0], note[1]), note[2]])
 
-    # If old_RP was center ('C'), then fire.
-
-    # Turning off notes for the left trigger.
+    # Turning on notes for the left trigger.
     for key in LEFT_STICK_COMPANY.keys():
 
         # Turning on the right notes.
         if key[0] != current_RP: continue # Don't activate any notes not associated with right position.
         if key[1] != current_LP: continue # Don't activate notes not associated with the left position.
         if not current_left_trigger: continue # Don't activate if the trigger isn't held down.
-        if old_left_trigger and current_LP == old_LP: continue # Don't activate if not pressed again
+        if old_left_trigger and current_LP == old_LP and (accompany is not None and accompany[0] != 'C'): continue # Don't activate if not pressed again
                                                                # and there's no stick change.
 
         accompany = key # Record what the currently held accompaniment is.

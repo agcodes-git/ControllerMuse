@@ -1,7 +1,6 @@
 import pygame
 import pygame.midi as md
 from input_codes import controller, input_manager
-import time
 
 from note_mapping import to_note
 from note_mapping import RIGHT_STICK_NOTES
@@ -14,7 +13,6 @@ pygame.init()
 pygame.midi.init()
 s = pygame.display.set_mode((800,500))
 p_clock = pygame.time.Clock()
-import numpy as np
 
 joysticks = controller.XInputJoystick.enumerate_devices()
 j = joysticks[0]
@@ -93,7 +91,7 @@ right_offset = (300, 150)
 current_right_note = None
 current_left_note = None
 
-def draw_arbitrary_pad(screen, color, offset, stick_position, regions):
+def draw_arbitrary_pad(screen, color, offset, current_sp, old_sp, regions):
     circle_size = 20
     pygame.draw.circle(screen, color, offset, 50, 1)
     #pygame.draw.circle(screen, color, offset, int(50 * 0.8), 1)
@@ -104,11 +102,19 @@ def draw_arbitrary_pad(screen, color, offset, stick_position, regions):
         lx, ly = to_xy(n+0.5)[0]
         pygame.draw.circle(screen, (0,0,0), (offset[0]+x, offset[1]+y), circle_size, 0)
         #pygame.draw.rect(screen, (0,0,0), (offset[0]+x-circle_size/2, offset[1]+y-circle_size/2, circle_size, circle_size), 0)
-        pygame.draw.circle(screen, color, (offset[0]+x, offset[1]+y), circle_size-2, 0 if stick_position == n else 1)
+        #pygame.draw.circle(screen, color if current_sp == n else (255,255,255), (offset[0]+x, offset[1]+y), circle_size-2, 0 if current_sp == n else 1)
+
+        if current_sp == n:
+            pygame.draw.circle(screen, color, (offset[0]+x, offset[1]+y), circle_size-2, 0)
+
+        pygame.draw.circle(screen, (200,200,200), (offset[0]+x, offset[1]+y), circle_size-2, 1)
+
+        if str(current_sp) != str(old_sp) and current_sp == n:
+            pygame.draw.circle(screen, (255,255,255), (offset[0]+x, offset[1]+y), circle_size-2, 0 if current_sp == n else 1)
         #pygame.draw.rect(screen, color, (offset[0]+x-circle_size/2, offset[1]+y-circle_size/2, circle_size, circle_size), 0 if stick_position==n else 1)
         #pygame.draw.line(screen, color, offset, (offset[0]+lx, offset[1]+ly), 1)
     pygame.draw.circle(screen, (0,0,0), offset, circle_size, 0)
-    pygame.draw.circle(screen, color, offset, circle_size-2, 0 if stick_position == -1 else 1)
+    pygame.draw.circle(screen, color, offset, circle_size-2, 0 if current_sp == -1 else 1)
     #rax, ray = right_analog_stick()
     #pygame.draw.circle(screen, (255,255,255), (int(offset[0]+rax*50), int(offset[1]+ray*50)), 5, 0)
 
@@ -117,7 +123,7 @@ old_left_company_key = None
 current_right_company_key = None
 old_right_company_key = None
 
-SEGMENTS = 6
+SEGMENTS = 4
 while True:
 
     pygame.display.flip()
@@ -137,16 +143,11 @@ while True:
     left_color = (150, 255, 0)
     right_color = (255, 0, 150)
 
-    draw_arbitrary_pad(s, left_color, left_offset, current_LP, SEGMENTS)
-    draw_arbitrary_pad(s, right_color, right_offset, current_RP, SEGMENTS)
+    draw_arbitrary_pad(s, left_color, left_offset, current_LP, old_LP, SEGMENTS)
+    draw_arbitrary_pad(s, right_color, right_offset, current_RP, old_RP, SEGMENTS)
 
     current_RP = str(current_RP)
     current_LP = str(current_LP)
-
-    # If the trigger is released, the note it was playing stops.
-    # If the trigger is pressed, the note intended is played.
-    # If the stick changes while the trigger is pressed, the old note releases and the new one
-    # gets played.
 
     for key in RIGHT_STICK_NOTES.keys():
         if current_RP == key:
@@ -157,19 +158,13 @@ while True:
                     current_right_note = key
 
                 if current_right_trigger:
-                    print("CHANGED WHILE TRIGGER")
-
-                    print(old_right_company_key, current_right_company_key)
 
                     old_right_company_key = current_right_company_key
                     current_right_company_key = key
 
-                    print(old_right_company_key, current_right_company_key)
-
                     # First, turn off all the old company notes.
                     if old_right_company_key is not None:
                         for note in RIGHT_STICK_COMPANY[old_right_company_key]:
-                            print("off", note)
                             midiout_1.send_message([0x80, to_note(note[0], note[1]), note[2]])
 
                     # Then turn on the new accompanying notes.
@@ -205,19 +200,12 @@ while True:
                     current_left_note = key
 
                 if current_left_trigger:
-                    print("CHANGED WHILE TRIGGER")
-
-                    print(old_left_company_key, current_left_company_key)
-
                     old_left_company_key = current_left_company_key
                     current_left_company_key = key
-
-                    print(old_left_company_key, current_left_company_key)
 
                     # First, turn off all the old company notes.
                     if old_left_company_key is not None:
                         for note in LEFT_STICK_COMPANY[old_left_company_key]:
-                            print("off", note)
                             midiout_1.send_message([0x80, to_note(note[0], note[1]), note[2]])
 
                     # Then turn on the new accompanying notes.

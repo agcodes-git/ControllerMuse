@@ -11,7 +11,7 @@ from note_mapping import LEFT_STICK_COMPANY
 import math
 pygame.init()
 pygame.midi.init()
-s = pygame.display.set_mode((800,500))
+s = pygame.display.set_mode((600,300))
 p_clock = pygame.time.Clock()
 
 joysticks = controller.XInputJoystick.enumerate_devices()
@@ -86,17 +86,18 @@ old_left_trigger = False
 old_right_trigger = False
 
 bs = 100
-left_offset = (150, 150)
-right_offset = (300, 150)
+left_offset = (175, 150)
+right_offset = (425, 150)
 current_right_note = None
 current_left_note = None
 
 def draw_arbitrary_pad(screen, color, offset, current_sp, old_sp, regions):
     circle_size = 20
-    pygame.draw.circle(screen, color, offset, 50, 1)
+    frame_size = 80
+    pygame.draw.circle(screen, color, offset, frame_size, 3)
     #pygame.draw.circle(screen, color, offset, int(50 * 0.8), 1)
     angle_offset = - math.pi / 2.0
-    to_xy = lambda q:([(int(50*math.cos(a)), int(50*math.sin(a))) for a in [angle_offset+q*(math.pi*2.0)/float(regions)]])
+    to_xy = lambda q:([(int(frame_size*math.cos(a)), int(frame_size*math.sin(a))) for a in [angle_offset+q*(math.pi*2.0)/float(regions)]])
     for n in range(regions):
         x,y = to_xy(n)[0]
         lx, ly = to_xy(n+0.5)[0]
@@ -114,7 +115,7 @@ def draw_arbitrary_pad(screen, color, offset, current_sp, old_sp, regions):
         #pygame.draw.rect(screen, color, (offset[0]+x-circle_size/2, offset[1]+y-circle_size/2, circle_size, circle_size), 0 if stick_position==n else 1)
         #pygame.draw.line(screen, color, offset, (offset[0]+lx, offset[1]+ly), 1)
     pygame.draw.circle(screen, (0,0,0), offset, circle_size, 0)
-    pygame.draw.circle(screen, color, offset, circle_size-2, 0 if current_sp == -1 else 1)
+    pygame.draw.circle(screen, color, offset, circle_size-2, 0 if current_sp == 'C' else 1)
     #rax, ray = right_analog_stick()
     #pygame.draw.circle(screen, (255,255,255), (int(offset[0]+rax*50), int(offset[1]+ray*50)), 5, 0)
 
